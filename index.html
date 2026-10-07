@@ -1,1 +1,34 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>Pazy — Calendário</title></head><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pazy — Calendário de Conteúdo</title>
+<style>
+:root{--yellow:#d9a514;--paper:#f7f5ef;--ink:#17130f;--muted:#77736d;--line:#ddd8ce}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--paper);color:var(--ink)}
+aside{position:fixed;inset:0 auto 0 0;width:210px;background:var(--yellow);padding:34px 22px}
+.brand{font-size:24px;font-weight:800;margin-bottom:42px}.nav{display:grid;gap:8px}.nav button{border:0;background:transparent;text-align:left;padding:11px 12px;border-radius:9px;font-size:14px;cursor:pointer}.nav .active{background:#fff;font-weight:700}
+main{margin-left:210px;padding:34px;min-height:100vh}.top{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:24px}.eyebrow{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.top h1{margin:4px 0 0;font-size:28px}.controls{display:flex;gap:8px}.controls button{background:#fff;border:1px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer}
+.week{display:grid;grid-template-columns:repeat(7,minmax(145px,1fr));border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}.day{min-height:480px;padding:14px;border-right:1px solid var(--line)}.day:last-child{border:0}.day.today{background:#fffaf0}.dow{font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:700}.date{font-size:24px;font-weight:800;margin:4px 0 16px}
+.task{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #eee9df;font-size:12px;line-height:1.25}.platform{width:22px;height:22px;border-radius:50%;background:#17130f;color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800;flex:none}.name{flex:1}.check{width:20px;height:20px;border:1.5px solid #aaa;border-radius:50%;background:#fff;cursor:pointer;flex:none}.check.done{background:#17130f;border-color:#17130f;color:#fff}.check.done:after{content:"✓";display:grid;place-items:center;height:100%;font-size:12px}
+.progress{margin-top:18px;font-size:12px;color:var(--muted)}.bar{height:5px;background:#e6e1d8;border-radius:9px;margin-top:7px;overflow:hidden}.bar i{display:block;height:100%;background:#17130f}
+@media(max-width:1050px){aside{position:static;width:auto}.nav{grid-template-columns:repeat(5,auto);overflow:auto}.brand{margin-bottom:16px}main{margin:0;padding:20px}.week{display:block}.day{min-height:0;border-right:0;border-bottom:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<aside><div class="brand">PAZY</div><div class="nav"><button class="active">Minha Semana</button><button>Pendências</button><button>Conteúdos Base</button><button>Avisos</button><button>Organograma</button></div></aside>
+<main><div class="top"><div><div class="eyebrow">Calendário de conteúdo</div><h1 id="range"></h1></div><div class="controls"><button id="prev">←</button><button id="today">Hoje</button><button id="next">→</button></div></div><div class="week" id="week"></div><div class="progress" id="progress"></div></main>
+<script>
+const rules={1:[["in","Post 3000"],["◎","Corte Pazy by Pazy"],["◎","Carrossel"],["◎","Frase"],["◎","Story Cartinha"]],2:[["in","Artigo"],["◎","Corte Pazy by Pazy"],["◎","Story Artigo com Link"],["◎","Carrossel Artigo"],["◎","Story Cartinha"]],3:[["in","Post TI"],["◎","Corte Pazy by Pazy"],["◎","Frase"],["◎","Story Cartinha"]],4:[["in","Vídeo Curto Podcast"],["in","Colocar link (caso tenha vídeo)"],["◎","Story Podcast"],["◎","Corte Podcast"],["◎","Story Cartinha"]],5:[["in","Carrossel LinkedIn"],["◎","Story Pazy by Pazy"],["◎","Corte Pazy by Pazy"],["◎","Story Cartinha"]],6:[["◎","Story Cartinha"]],0:[["◎","Story Cartinha"]]};
+const coverage={"Story Cartinha":"2026-11-06","Frase":"2026-10-28","Carrossel":"2026-10-26","Carrossel LinkedIn":"2026-10-30","Post TI":"2026-10-28","Post 3000":"2026-10-26","Corte Pazy by Pazy":"2026-10-09","Story Pazy by Pazy":"2026-10-09"};
+const days=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"], months=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const pad=n=>String(n).padStart(2,"0"), key=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+function monday(d){d=new Date(d);d.setHours(12,0,0,0);let n=d.getDay();d.setDate(d.getDate()-(n===0?6:n-1));return d}
+let anchor=monday(new Date());
+const manual=JSON.parse(localStorage.getItem("pazy-checks")||"{}");
+function automatic(name,k){return coverage[name]&&k<=coverage[name]}
+function render(){const box=document.getElementById("week");box.innerHTML="";let done=0,total=0;const now=key(new Date()), end=new Date(anchor);end.setDate(end.getDate()+6);document.getElementById("range").textContent=pad(anchor.getDate())+" "+months[anchor.getMonth()]+" — "+pad(end.getDate())+" "+months[end.getMonth()]+" "+end.getFullYear();
+for(let i=0;i<7;i++){const d=new Date(anchor);d.setDate(d.getDate()+i);const k=key(d),col=document.createElement("section");col.className="day"+(k===now?" today":"");col.innerHTML='<div class="dow">'+days[d.getDay()]+'</div><div class="date">'+pad(d.getDate())+'</div>';for(const [p,n] of rules[d.getDay()]){total++;const id=k+"|"+n,isDone=automatic(n,k)||manual[id]===true;if(isDone)done++;const row=document.createElement("div");row.className="task";row.innerHTML='<span class="platform">'+p+'</span><span class="name">'+n+'</span><button class="check '+(isDone?"done":"")+'" aria-label="Marcar"></button>';row.querySelector("button").onclick=()=>{if(automatic(n,k))return;manual[id]=!manual[id];localStorage.setItem("pazy-checks",JSON.stringify(manual));render()};col.appendChild(row)}box.appendChild(col)}
+const pct=total?Math.round(done/total*100):0;document.getElementById("progress").innerHTML=done+" de "+total+" itens resolvidos · "+pct+'%<div class="bar"><i style="width:'+pct+'%"></i></div>'}
+document.getElementById("prev").onclick=()=>{anchor.setDate(anchor.getDate()-7);render()};document.getElementById("next").onclick=()=>{anchor.setDate(anchor.getDate()+7);render()};document.getElementById("today").onclick=()=>{anchor=monday(new Date());render()};render();
+</script></body></html>
